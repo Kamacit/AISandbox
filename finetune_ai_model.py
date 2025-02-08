@@ -37,7 +37,7 @@ def detect_and_convert_to_utf8(file_path):
 
 
 # Function to Load All Stories
-def load_stories(folder_path, num_samples=700): #4200 ca. 24 Std.
+def load_stories(folder_path, num_samples=700):
     """Load all stories, shuffle, and select a random subset (num_samples)."""
     stories = []
     for root, _, files in os.walk(folder_path):
@@ -168,7 +168,7 @@ print("LoRA Adapters Added")
 
 # Define Training Arguments
 training_args = TrainingArguments(
-    output_dir="./results_phi2",
+    output_dir="./results_phi3",
     evaluation_strategy="epoch",
     learning_rate=LEARNING_RATE,
     per_device_train_batch_size=BATCH_SIZE,
@@ -177,7 +177,7 @@ training_args = TrainingArguments(
     save_strategy="steps",
     save_steps=200,
     fp16=True,
-    logging_dir="./logs_phi2",
+    logging_dir="./logs_phi3",
     logging_steps=25,
     save_total_limit=2,
 )
