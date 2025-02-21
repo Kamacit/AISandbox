@@ -7,24 +7,24 @@ from exchangelib.protocol import BaseProtocol, NoVerifyHTTPAdapter
 from dotenv import load_dotenv
 import threading
 
-# Laden Sie die Umgebungsvariablen aus der .env-Datei
+# Load environment variables from the .env file
 load_dotenv()
 
-# Mistral-API-Konfiguration
+# Mistral API configuration
 api_key = os.getenv("MISTRAL_API_KEY")
 model = "mistral-large-latest"
 client = Mistral(api_key=api_key)
 
-# Funktion zur sicheren Eingabe des Passworts über Tkinter
+# Function to securely input password via Tkinter
 def get_user_credentials():
     root = tk.Tk()
-    root.withdraw()  # Versteckt das Hauptfenster
-    email = simpledialog.askstring("E-Mail", "Geben Sie Ihre E-Mail-Adresse ein:")
-    password = simpledialog.askstring("Passwort", "Geben Sie Ihr Passwort ein:", show='*')
+    root.withdraw()  # Hide the main window
+    email = simpledialog.askstring("Email", "Enter your email address:")
+    password = simpledialog.askstring("Password", "Enter your password:", show='*')
     root.destroy()
     return email, password
 
-# Konfiguration für die Verbindung zu Exchange
+# Configuration for connecting to Exchange
 email, password = get_user_credentials()
 credentials = Credentials(email, password)
 config = Configuration(server=os.getenv("MAIL_SERVER"), credentials=credentials)
@@ -38,19 +38,19 @@ try:
         access_type=DELEGATE
     )
 except Exception as e:
-    print(f"Fehler beim Verbinden mit dem Exchange-Server: {e}")
+    print(f"Error connecting to the Exchange server: {e}")
     exit()
 
-# Nur ungelesene E-Mails abrufen und nach Dringlichkeit sortieren
+# Fetch only unread emails and sort by urgency
 def fetch_emails():
     try:
         emails = account.inbox.filter(is_read=False).order_by('-importance', '-datetime_received')
         return emails
     except Exception as e:
-        print(f"Fehler beim Abrufen der E-Mails: {e}")
+        print(f"Error fetching emails: {e}")
         return []
 
-# E-Mail-Inhalte analysieren und Priorität sowie Zusammenfassung zuweisen
+# Analyze email contents and assign priority and summary
 def analyze_emails(emails):
     prioritized_emails = []
     for email in emails:
@@ -93,13 +93,13 @@ def analyze_emails(emails):
             else:
                 priority_score = "Low"
 
-            # Analyse der Zusammenfassung
+            # Analyze the summary
             summary_response = client.chat.complete(
                 model=model,
                 messages=[
                     {
                         "role": "user",
-                        "content": f"Summarize the following email content in German in one sentence: {email.body}",
+                        "content": f"Summarize the following email content in one sentence: {email.body}",
                     },
                 ]
             )
@@ -107,53 +107,52 @@ def analyze_emails(emails):
 
             prioritized_emails.append((email, priority_score, summary))
         except Exception as e:
-            print(f"Fehler beim Analysieren der E-Mail: {e}")
+            print(f"Error analyzing email: {e}")
     return prioritized_emails
 
-# Funktion zum Aktualisieren der GUI
+# Function to update the GUI
 def update_gui(root, tree, emails):
     prioritized_emails = analyze_emails(emails)
 
-    # Sortieren der E-Mails nach Dringlichkeit (High zuerst)
+    # Sort emails by urgency (High first)
     priority_order = {'High': 0, 'Medium': 1, 'Low': 2}
     prioritized_emails.sort(key=lambda x: priority_order[x[1]])
 
     for email, priority, summary in prioritized_emails:
         tree.insert('', 'end', values=(email.subject, email.sender.email_address, priority, summary, email.datetime_received.strftime('%Y-%m-%d %H:%M:%S')))
 
-# GUI erstellen
+# Create GUI
 def create_gui():
     root = tk.Tk()
-    root.title("E-Mail Prioritätenliste")
+    root.title("Email Priority List")
 
-    # Ladebalken
+    # Progress bar
     progress = ttk.Progressbar(root, orient="horizontal", length=300, mode="indeterminate")
     progress.pack(pady=20)
 
-    # Starten Sie den Ladebalken
+    # Start the progress bar
     progress.start()
 
-    # Treeview für die E-Mail-Liste
+    # Treeview for the email list
     tree = ttk.Treeview(root, columns=('Subject', 'Sender', 'Priority', 'Summary', 'Date'), show='headings')
-    tree.heading('Subject', text='Betreff')
-    tree.heading('Sender', text='Absender')
-    tree.heading('Priority', text='Priorität')
-    tree.heading('Summary', text='Zusammenfassung')
-    tree.heading('Date', text='Datum')
+    tree.heading('Subject', text='Subject')
+    tree.heading('Sender', text='Sender')
+    tree.heading('Priority', text='Priority')
+    tree.heading('Summary', text='Summary')
+    tree.heading('Date', text='Date')
     tree.pack(fill=tk.BOTH, expand=True)
 
-    # Hintergrundaufgabe zum Abrufen und Analysieren von E-Mails
+    # Background task to fetch and analyze emails
     def load_emails():
         emails = fetch_emails()
         update_gui(root, tree, emails)
         progress.stop()
-        progress.pack_forget()  # Versteckt den Ladebalken
+        progress.pack_forget()  # Hide the progress bar
 
-    # Starten Sie die Hintergrundaufgabe
+    # Start the background task
     threading.Thread(target=load_emails, daemon=True).start()
 
     root.mainloop()
 
-# Anwendung starten
+# Start application
 create_gui()
-
